@@ -221,7 +221,7 @@ private:
 
 		randX = -randX;	//horizontal offset must be negative
 		for (auto& bird : birds) {
-			if (abs(randX - bird.horizontalOffset) <= 75 && abs(randY - bird.verticalOffset) <= 75)
+			if (abs(randX - bird.horizontalOffset) <= 75 && abs(randY - bird.verticalOffset) <= 50)
 			{
 				GenerateRandomOffset();
 				return;
@@ -297,7 +297,7 @@ private:
 	{
 		ChangeOffsets();
 		MoveWings();
-		glm::mat4 VerticalOffset = glm::translate(glm::mat4(1.0f), glm::vec3(0, verticalOffsetOnWingFlap, 0.0)); // offset pasare #7
+		glm::mat4 VerticalOffset = glm::translate(glm::mat4(1.0f), glm::vec3(0, verticalOffsetOnWingFlap, 0.0));
 
 		codCol = 3;
 		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset * birdScaleMatrix;
