@@ -1,6 +1,6 @@
-/* DESCRIERE: DREPTUNGHI CU SATELIT -- varianta cu OpenGL "nou"
-	- utilizeaza diverse transformari si compunerea acestora folosind biblioteca glm
-	- functii pentru utilizarea mouse-ului
+/* Vasile George-Cristian
+* Gr. 331
+* Proiect 1 lab - tema 'Stol de pasari'
 */
 
 #include <windows.h>  // biblioteci care urmeaza sa fie incluse
