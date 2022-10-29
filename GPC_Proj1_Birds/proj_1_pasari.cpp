@@ -36,36 +36,82 @@ int codCol;
 float PI = 3.141592, angle = 0;
 float tx = 0; float ty = 0;
 float width = 1200, height = 750;
-float beta = 0.002, verticalMovementStep = 0.01;
 glm::mat4
 resizeMatrix, myMatrix;
 
 void SendVariables();
+float GetRandFloat(float min, float max);
 
 const int birdNr = 25;
 class Bird
 {
 public:
+	/// <summary>
+	/// Used in wing animation to switch transitions between up and down
+	/// </summary>
 	bool wingsGoingDown = true;
+	/// <summary>
+	/// Current scale of the wings
+	/// </summary>
 	float wingScale = 1.0;
+	/// <summary>
+	/// 'Speed' of wing scaling
+	/// </summary>
 	float wingScaleStep = 0.002;
-	glm::mat4 PositionOffset = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, 0.0));
-	static glm::mat4 movementMatrix;
-	static glm::mat4 wingScaleMatrix;
+	/// <summary>
+	/// used in scaling a bird's wings
+	/// </summary>
+	glm::mat4 wingScaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 0.0));
+	/// <summary>
+	/// Used in moving bird up/down slightly on wing flaps
+	/// </summary>
 	float verticalOffsetOnWingFlap = 0;
-	int horizontalOffset = 0;
-	int verticalOffset = 0;
+
+	/// <summary>
+	/// Offset at which a bird is drawn, relative to 0.0 + current horizontal movement matrix
+	/// </summary>
+	glm::mat4 positionOffsetMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, 0.0));
+	float horizontalOffset = 0;
+	float verticalOffset = 0;
+	// ^ hold horizontal and vertical offset because I don't know how to access them
+
+	/// <summary>
+	/// used in moving all the birds from left to right
+	/// </summary>
+	static glm::mat4 movementMatrix;
+
 	static float horizontalMovementOffset;
 	static const float horizontalMovementStep;
 
-	static void RandomizeBirds() 
+	/// <summary>
+	/// Used in making birds swap place
+	/// </summary>
+	float targetHorizontalOffset = 0;
+	float targetVerticalOffset = 0;
+	float horizontalSwapStep = 0;
+	float verticalSwapStep = 0;
+	bool goingUp = false;
+	bool goingRight = false;
+
+	/// <summary>
+	/// Resets birds offset, switch-place vectors, and re-randomizes positions and wings.
+	/// </summary>
+	static void ResetBirds()
 	{
-		srand(time(NULL));
-		for (auto& bird : birds) 
-		{
-			bird.GenerateRandomWings();
-			bird.GenerateRandomOffset();
+		horizontalMovementOffset = 0;
+		RandomizeBirds();
+		for (auto& bird : birds) {
+			bird.targetHorizontalOffset = 0;
+			bird.targetVerticalOffset = 0;
+			bird.horizontalSwapStep = 0;
+			bird.verticalSwapStep = 0;
+			bird.goingUp = false;
+			bird.goingRight = false;
 		}
+		//make birds swap places
+
+		SwapBirdPositions(2, 4);
+		SwapBirdPositions(1, 9);
 	}
 
 	static void MoveBirds()
@@ -73,11 +119,8 @@ public:
 		movementMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(horizontalMovementOffset, 0.0, 0.0)); // controleaza translatia paralel cu Ox
 		horizontalMovementOffset = horizontalMovementOffset + horizontalMovementStep;
 
-		if (horizontalMovementOffset > width + maxXOffset + 50) 
-		{
-			horizontalMovementOffset = 0;
-			RandomizeBirds();
-		}
+		if (horizontalMovementOffset > width + maxXOffset + 60)
+			ResetBirds();
 
 		glutPostRedisplay();
 	}
@@ -88,6 +131,8 @@ public:
 			bird.DrawBird();
 	}
 
+
+
 private:
 	static const float maxWingScale;
 	static const float minWingScale;
@@ -95,6 +140,57 @@ private:
 	static const int maxXOffset = 800;
 	static const int minYOffset = 100;
 	static const int maxYOffset = 650;
+	static const float verticalMovementStep;
+
+	static void SwapBirdPositions(int index1, int index2) 
+	{
+		const int nrSteps = 7500;
+
+		//will finish swapping places in nrSteps draw calls
+		float verticalStep = abs(birds[index1].verticalOffset - birds[index2].verticalOffset) / nrSteps;
+		float horizontalStep = abs(birds[index1].horizontalOffset - birds[index2].horizontalOffset) / nrSteps;
+
+		birds[index1].targetVerticalOffset = birds[index2].verticalOffset;
+		birds[index2].targetVerticalOffset = birds[index1].verticalOffset;
+		birds[index1].targetHorizontalOffset = birds[index2].horizontalOffset;
+		birds[index2].targetHorizontalOffset = birds[index1].horizontalOffset;
+
+		birds[index1].goingUp = (birds[index1].verticalOffset <= birds[index2].verticalOffset);
+		birds[index2].goingUp = !birds[index1].goingUp;
+
+		birds[index1].goingRight = (birds[index1].horizontalOffset <= birds[index2].horizontalOffset);
+		birds[index2].goingRight = !birds[index1].goingRight;
+
+		if (birds[index1].goingUp)
+			birds[index1].verticalSwapStep = verticalStep;
+		else
+			birds[index1].verticalSwapStep = -verticalStep;
+
+		birds[index2].verticalSwapStep = -birds[index1].verticalSwapStep;
+
+		if (birds[index1].goingRight)
+			birds[index1].horizontalSwapStep = horizontalStep;
+		else
+			birds[index1].horizontalSwapStep = -horizontalStep;
+
+		birds[index2].horizontalSwapStep = -birds[index1].horizontalSwapStep;
+
+		//randomize speeds
+		birds[index1].horizontalSwapStep *= GetRandFloat(0.5, 1.5);
+		birds[index2].horizontalSwapStep *= GetRandFloat(0.5, 1.5);
+		birds[index1].verticalSwapStep *= GetRandFloat(0.5, 1.5);
+		birds[index2].verticalSwapStep *= GetRandFloat(0.5, 1.5);
+	}
+
+	static void RandomizeBirds()
+	{
+		srand(time(NULL));
+		for (auto& bird : birds)
+		{
+			bird.GenerateRandomWings();
+			bird.GenerateRandomOffset();
+		}
+	}
 
 	/// <summary>
 	/// Generates random wing initial positions so the wings on every bird aren't synced. Also sets the 'step', which will make the birds flap their wings at different intervals.
@@ -103,9 +199,9 @@ private:
 	void GenerateRandomWings()
 	{
 		//set random initial wing angles and movements
-		wingScale = minWingScale + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (maxWingScale - minWingScale)));
+		wingScale = GetRandFloat(minWingScale, maxWingScale);
 		wingsGoingDown = (rand() % 2 == 1) ? true : false;
-		wingScaleStep = 0.0015 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.003 - 0.0015)));
+		wingScaleStep = GetRandFloat(0.0015, 0.003);
 	}
 	/// <summary>
 	/// Generates random offsets for bird positions
@@ -126,7 +222,7 @@ private:
 
 		horizontalOffset = randX;
 		verticalOffset = randY;
-		PositionOffset = glm::translate(glm::mat4(1.0f), glm::vec3(horizontalOffset, verticalOffset, 0.0));
+		positionOffsetMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(horizontalOffset, verticalOffset, 0.0));
 	}
 
 	/// <summary>
@@ -151,15 +247,52 @@ private:
 	}
 
 	/// <summary>
+	/// Moves a bird's offset until it reaches the desired position
+	/// </summary>
+	/// <param name=""></param>
+	void ChangeOffsets() {
+		if (horizontalSwapStep != 0 || verticalSwapStep != 0) 
+		{
+			verticalOffset += verticalSwapStep;
+			horizontalOffset += horizontalSwapStep;
+
+			if (goingUp) 
+			{
+				if (verticalOffset >= targetVerticalOffset)
+					verticalSwapStep = 0;
+			}
+			else 
+			{
+				if (verticalOffset <= targetVerticalOffset)
+					verticalSwapStep = 0;
+			}
+
+			if (goingRight)
+			{
+				if (horizontalOffset >= targetHorizontalOffset)
+					horizontalSwapStep = 0;
+			}
+			else 
+			{
+				if (horizontalOffset <= targetHorizontalOffset)
+					horizontalSwapStep = 0;
+			}
+
+			positionOffsetMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(horizontalOffset, verticalOffset, 0.0));
+		}
+	}
+
+	/// <summary>
 	/// Draws a bird using the required shapes
 	/// </summary>
 	void DrawBird()
 	{
+		ChangeOffsets();
 		MoveWings();
 		glm::mat4 VerticalOffset = glm::translate(glm::mat4(1.0f), glm::vec3(0, verticalOffsetOnWingFlap, 0.0)); // offset pasare #7
 
 		codCol = 3;
-		myMatrix = resizeMatrix * Bird::movementMatrix * PositionOffset * VerticalOffset;
+		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset;
 		SendVariables();
 		//draw body
 		glDrawArrays(GL_POLYGON, 4, 9);
@@ -178,7 +311,7 @@ private:
 		wingScaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0, wingScale, 0.0)); // scales the wings vertically
 
 		codCol = 3;
-		myMatrix = resizeMatrix * Bird::movementMatrix * PositionOffset * VerticalOffset * wingScaleMatrix;
+		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset * wingScaleMatrix;
 		SendVariables();
 		//draw wing
 		glDrawArrays(GL_POLYGON, 15, 8);
@@ -189,8 +322,13 @@ float Bird::horizontalMovementOffset = 0.0;
 const float Bird::horizontalMovementStep = 0.2;
 const float Bird::maxWingScale = 1.0;
 const float Bird::minWingScale = 0.05;
+const float Bird::verticalMovementStep = 0.01;
 glm::mat4 Bird::movementMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, 0.0));
-glm::mat4 Bird::wingScaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 0.0));
+
+float GetRandFloat(float min, float max) 
+{
+	return min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
+}
 
 void displayMatrix()
 {
@@ -301,7 +439,7 @@ void Initialize(void)
 	CreateShaders();
 	codColLocation = glGetUniformLocation(ProgramId, "codCuloare");
 	myMatrixLocation = glGetUniformLocation(ProgramId, "myMatrix");
-	Bird::RandomizeBirds();
+	Bird::ResetBirds();
 	glEnable(GL_POINT_SMOOTH);
 }
 
@@ -343,6 +481,7 @@ void DrawEllipse(float cx, float cy, float rx, float ry)
 	// 360 degrees
 	for (int i = 0; i < 360; i++) {
 
+		// Find the angle
 		float angle_theta = i * PI / 180;
 		glVertex2f(cx + rx * cos(angle_theta),
 			cy + ry * sin(angle_theta));
