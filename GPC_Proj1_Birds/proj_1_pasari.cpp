@@ -93,6 +93,8 @@ public:
 	bool goingUp = false;
 	bool goingRight = false;
 
+	glm::mat4 birdScaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
+
 	/// <summary>
 	/// Resets birds offset, switch-place vectors, and re-randomizes positions and wings.
 	/// </summary>
@@ -188,7 +190,14 @@ private:
 		{
 			bird.GenerateRandomWings();
 			bird.GenerateRandomOffset();
+			bird.GenerateRandomSize();
 		}
+	}
+
+	void GenerateRandomSize() 
+	{
+		float randSize = GetRandFloat(0.9, 1.3);
+		birdScaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(randSize, randSize, 1.0));
 	}
 
 	/// <summary>
@@ -212,7 +221,7 @@ private:
 
 		randX = -randX;	//horizontal offset must be negative
 		for (auto& bird : birds) {
-			if (abs(randX - bird.horizontalOffset) <= 50 && abs(randY - bird.verticalOffset) <= 50)
+			if (abs(randX - bird.horizontalOffset) <= 75 && abs(randY - bird.verticalOffset) <= 75)
 			{
 				GenerateRandomOffset();
 				return;
@@ -291,7 +300,7 @@ private:
 		glm::mat4 VerticalOffset = glm::translate(glm::mat4(1.0f), glm::vec3(0, verticalOffsetOnWingFlap, 0.0)); // offset pasare #7
 
 		codCol = 3;
-		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset;
+		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset * birdScaleMatrix;
 		SendVariables();
 		//draw body
 		glDrawArrays(GL_POLYGON, 4, 9);
@@ -310,7 +319,7 @@ private:
 		wingScaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0, wingScale, 0.0)); // scales the wings vertically
 
 		codCol = 3;
-		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset * wingScaleMatrix;
+		myMatrix = resizeMatrix * Bird::movementMatrix * positionOffsetMatrix * VerticalOffset * birdScaleMatrix * wingScaleMatrix;
 		SendVariables();
 		//draw wing
 		glDrawArrays(GL_POLYGON, 15, 8);
