@@ -42,7 +42,7 @@ resizeMatrix, myMatrix;
 void SendVariables();
 float GetRandFloat(float min, float max);
 
-const int birdNr = 25;
+const int birdNr = 20;
 class Bird
 {
 public:
@@ -110,8 +110,9 @@ public:
 		}
 		//make birds swap places
 
-		SwapBirdPositions(2, 4);
-		SwapBirdPositions(1, 9);
+		int nrSwaps = rand() % 6;
+		for (int i = 0; i < nrSwaps; i++)
+			SwapBirdPositions(i * 2, i * 2 + 1);
 	}
 
 	static void MoveBirds()
@@ -131,8 +132,6 @@ public:
 			bird.DrawBird();
 	}
 
-
-
 private:
 	static const float maxWingScale;
 	static const float minWingScale;
@@ -144,7 +143,7 @@ private:
 
 	static void SwapBirdPositions(int index1, int index2) 
 	{
-		const int nrSteps = 7500;
+		const int nrSteps = 5000;
 
 		//will finish swapping places in nrSteps draw calls
 		float verticalStep = abs(birds[index1].verticalOffset - birds[index2].verticalOffset) / nrSteps;
